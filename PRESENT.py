@@ -15,7 +15,6 @@ def GenerateRoundKey(key):
         key = ((key * (2 ** 19 - 1)) << 61) + (key >> 19)
         key = ((Sbox[key >> 0x4c] << 0x4c) + (key & (2 ** 0x4c - 1)))
         key ^= i << 15
-    #print(roundKeys)
     return roundKeys
 
 
@@ -36,3 +35,21 @@ def pLayer(state):
         result = result + ((state >> i ) & 0x01) << PBox[i]
     return result
 
+class Present:
+
+    def __init__(self, key, rounds=32):
+        self.rounds = rounds
+
+        if len(key) * 8 == 80:
+            self.round_keys = GenerateRoundKey(key)
+        else:
+            raise ValueError("Key incorrect length")
+
+    def encrpyt(self, text):
+
+        for i in range(self.rounds-1):
+            state = addRoundKey(state, self.round_keys[i])
+            state = sBoxLayer(state)
+            state = pLayer(state)
+        encrpyted = addRoundKey(state,self.round_keys[-1])
+        return encrpyted
