@@ -1,3 +1,5 @@
+import copy
+
 sbox = [
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
     0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
@@ -32,13 +34,7 @@ roundkeySizeBits = 128
 expandedKeySizeWord = 44
 expandedKeySizeBytes = 176
 
-
-def addpadding(plaintext):
-    padding_needed = keySizeBytes - (len(plaintext) % keySizeBytes)
-    padding = bytes([padding_needed] * padding_needed)
-    return plaintext + padding
-
-
+#subByte transforation
 def subBytes(state):
     for i in range(4):
         for j in range(4):
@@ -52,13 +48,44 @@ def shiftRow(state):
     state[0][2], state[1][2], state[2][2], state[3][2] = state[2][2], state[3][2], state[0][2], state[1][2]
     state[0][3], state[1][3], state[2][3], state[3][3] = state[3][3], state[0][3], state[1][3], state[2][3]
 
+#multiplivation used in mixing columns
+def mult(a, b):
+    p = 0
+    hi_bit_set = 0
+    for i in range(8):
+        if b & 1 == 1: p ^= a
+        hi_bit_set = a & 0x80
+        a <<= 1
+        if hi_bit_set == 0x80: a ^= 0x1b
+        b >>= 1
+    return p % 256
 
+#mix a single column
+def mix_column(col_to_mix):
+    temp_col = copy.copy(col_to_mix)
+    col_to_mix[0] = mult(temp_col[0], 2) ^ mult(temp_col[1], 3) ^ mult(temp_col[2], 1) ^ mult(temp_col[3], 1)
+    col_to_mix[1] = mult(temp_col[0], 1) ^ mult(temp_col[1], 2) ^ mult(temp_col[2], 3) ^ mult(temp_col[1], 2)
+    col_to_mix[2] = mult(temp_col[0], 1) ^ mult(temp_col[1], 1) ^ mult(temp_col[2], 2) ^ mult(temp_col[3], 3)
+    col_to_mix[3] = mult(temp_col[0], 3) ^ mult(temp_col[1], 1) ^ mult(temp_col[2], 1) ^ mult(temp_col[3], 2)
+
+#method to mix all the columns
+def mix_all(x):
+    for i in range(4):
+        column = []
+        for j in range(4):
+            column.append(x[j][i])
+        mix_column(column)
+
+        for j in range(4):
+            x[j][i] = column[j]
+
+#perform XOR transoformation to add a round key
 def addRoundKey(state, key):
     for i in range(4):
         for j in range(4):
             state[i][j] ^= key[i][j]
 
-
+#convert the input to a matrix - list of lists
 def convert_to_matrix(text):
     main_matrix = []
     for i in range(16):
@@ -66,9 +93,10 @@ def convert_to_matrix(text):
         if i % 4 == 0:
             main_matrix.append([byte])
         else:
-            main_matrix[i/4].append(byte)
+            main_matrix[int(i/4)].append(byte)
     return main_matrix
 
+#convert back from lsit of lists
 def convert_back_text(matrix):
     text = 0
     for i in range(4):
@@ -76,79 +104,44 @@ def convert_back_text(matrix):
             text |= (matrix[i][j] << (120 - 8 * (4 * i + j)))
     return text
 
+class AES:
+    def __init__(self, main_key):
+        self.expand_key(main_key)
 
-def convert_hex_to_bin(val):
-    return bin(int(str(val), 16))
+    def expand_key(self, main_key):
+        self.round_keys = convert_to_matrix(main_key)
 
+        for i in range(4, expandedKeySizeWord):
+            self.round_keys.append([])
+            if i % 4 == 0:
+                x = self.round_keys[i - 4][0] ^ sbox[self.round_keys[i-1][1]] ^ Rcon[int(i/4)]
+                self.round_keys[i].append(x)
 
-def RotateWord(word):
-    return word[1:] + word[:1]
+                for j in range(1,4):
+                    x = self.round_keys[i - 4][j] ^ sbox[self.round_keys[i -1][(j+1) % 4]]
+                    self.round_keys[i].append(x)
 
+            else:
+                for j in range(4):
+                    x = self.round_keys[i - 4][j] ^ self.round_keys[i - 1][j]
+                    self.round_keys[i].append(x)
 
-def SubWord(word):
-    sWord = ()
+    def encrypt(self, plaintext):
+        self.plain = convert_to_matrix(plaintext)
 
-    for i in range(4):
+        addRoundKey(self.plain, self.round_keys[:4])
 
-        if word[i][0].isdigit() == False:
-            row = ord(word[i][0]) - 86
-        else:
-            row = int(word[i][0]) + 1
+        for i in range(1, rounds):
+            self.do_round(self.plain, self.round_keys[4 * i : 4 * (i+1)])
 
-        if word[i][1].isdigit() == False:
-            col = ord(word[i][1]) - 86
-        else:
-            col = int(word[i][1]) + 1
+        subBytes(self.plain)
+        shiftRow(self.plain)
+        addRoundKey(self.plain, self.round_keys[40:])
 
-        sBoxIndex = (row * 16) - (17 - col)
+        return convert_back_text(self.plain)
 
-        piece = hex(sbox[sBoxIndex])[2:]
-
-        if len(piece) != 2:
-            piece = '0' + piece
-
-        sWord = (*sWord, piece)
-
-    return ''.join(sWord)
-
-
-def exor(hval1, hval2):
-    bval1 = convert_hex_to_bin(hval1)
-    bval2 = convert_hex_to_bin(hval2)
-
-    xor = int(bval1, 2) ^ int(bval2, 2)
-
-    edited = hex(xor)[2:]
-
-    if len(edited) != 8:
-        edited = '0' + edited
-
-    return edited
-
-
-def expandKey(key):
-    w = [()]*44
-
-    for i in range(4):
-        w[i] = (key[4*i], key[4*i+1], key[4*i+2], key[4*i+3])
-
-
-    for i in range(4,44):
-        temp = w[i-1]
-        word = w[i-4]
-
-        if i % 4 == 0:
-            x = RotateWord(temp)
-            y = SubWord(x)
-            rcon = Rcon[int(i/4)]
-
-            temp = exor(y, hex(rcon)[2:])
-
-        word = ''.join(word)
-        temp = ''.join(temp)
-
-        xord = exor(word, temp)
-        w[i] = (xord[:2], xord[2:4], xord[4:6], xord[6:8])
-
-    print(w)
-    return w
+    def do_round(self, state, key):
+        subBytes(state)
+        shiftRow(state)
+        mix_all(state)
+        addRoundKey(state, key)
