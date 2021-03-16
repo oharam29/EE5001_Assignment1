@@ -11,12 +11,12 @@ from PRESENT_Test import *
 class Test_AES(unittest.TestCase):
     def test(self):
         print("AES - Test 1")
-        master_key = 0x2b7e151628aed2a6abf7158809cf4f3c
+        master_key = 0x2b7e151628aed2a6abf597aed9cf4f3c
         self.AES = AES(master_key)
         plaintext = 0x3243f6a8885a308d313198a2e0370734
         encrypted = self.AES.encrypt(plaintext)
         print(encrypted)
-        if encrypted == 85954744721656886078383528931601153569:
+        if encrypted == 265986203824032857909769280400137674588:
             print("Encrypted")
         print("AES - Test 1 Finished")
 
@@ -37,7 +37,7 @@ class Test_PRESENT(unittest.TestCase):
     def test(self):
         print("PRESENT - Test 1")
         master_key = b"0000000000"
-        self.Present = Present(master_key)
+        self.Present = Present(master_key, 32)
         plaintext = b'hello'
         encrypted = self.Present.encrypt(plaintext)
         print(encrypted)

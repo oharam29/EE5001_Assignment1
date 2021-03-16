@@ -49,16 +49,17 @@ def shiftRow(state):
     state[0][3], state[1][3], state[2][3], state[3][3] = state[3][3], state[0][3], state[1][3], state[2][3]
 
 #multiplivation used in mixing columns
+#inspiration from https://github.com/hlilje/aes-python/blob/master/aes.py
 def mult(a, b):
-    p = 0
-    hi_bit_set = 0
+    x = 0
+    y = 0
     for i in range(8):
-        if b & 1 == 1: p ^= a
-        hi_bit_set = a & 0x80
+        if b & 1 == 1: x ^= a
+        y = a & 0x80
         a <<= 1
-        if hi_bit_set == 0x80: a ^= 0x1b
+        if y == 0x80: a ^= 0x1b
         b >>= 1
-    return p % 256
+    return x % 256
 
 #mix a single column
 def mix_column(col_to_mix):
@@ -88,7 +89,7 @@ def addRoundKey(state, key):
 #convert the input to a matrix - list of lists
 def convert_to_matrix(text):
     main_matrix = []
-    for i in range(16):
+    for i in range(keySizeBytes):
         byte = (text >> (8 * (15 - i))) & 0xFF
         if i % 4 == 0:
             main_matrix.append([byte])
@@ -99,8 +100,8 @@ def convert_to_matrix(text):
 #convert back from lsit of lists
 def convert_back_text(matrix):
     text = 0
-    for i in range(4):
-        for j in range(4):
+    for i in range(keySizeWords):
+        for j in range(keySizeWords):
             text |= (matrix[i][j] << (120 - 8 * (4 * i + j)))
     return text
 

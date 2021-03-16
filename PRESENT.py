@@ -37,9 +37,9 @@ def pLayer(state):
     return result
 
 #funnctions to convert form string to int and vice versa, created using old undergrad python notes
-def number2string(i, N):
-    s = '%0*x' % (N*2, i)
-    return binascii.unhexlify(str(s))
+def number2string(i):
+    string = '%0*x' % (8*2, i)
+    return binascii.unhexlify(str(string))
 
 def string2number(i):
     val = int.from_bytes(i, byteorder='big')
@@ -47,7 +47,7 @@ def string2number(i):
 
 class Present:
 
-    def __init__(self, key, rounds=32):
+    def __init__(self, key, rounds):
         self.rounds = rounds
 
         if len(key) * 8 == 80:
@@ -62,4 +62,4 @@ class Present:
             state = sBoxLayer(state)
             state = pLayer(state)
         encrpyted = addRoundKey(state,self.round_keys[-1])
-        return number2string(encrpyted, 8)
+        return number2string(encrpyted)
