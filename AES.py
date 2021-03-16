@@ -36,8 +36,8 @@ expandedKeySizeBytes = 176
 
 #subByte transforation
 def subBytes(state):
-    for i in range(4):
-        for j in range(4):
+    for i in range(keySizeWords):
+        for j in range(keySizeWords):
             state[i][j] = sbox[state[i][j]]
 
 
@@ -53,7 +53,7 @@ def shiftRow(state):
 def mult(a, b):
     x = 0
     y = 0
-    for i in range(8):
+    for i in range(keySizeWords*2):
         if b & 1 == 1: x ^= a
         y = a & 0x80
         a <<= 1
@@ -71,19 +71,19 @@ def mix_column(col_to_mix):
 
 #method to mix all the columns
 def mix_all(x):
-    for i in range(4):
+    for i in range(keySizeWords):
         column = []
-        for j in range(4):
+        for j in range(keySizeWords):
             column.append(x[j][i])
         mix_column(column)
 
-        for j in range(4):
+        for j in range(keySizeWords):
             x[j][i] = column[j]
 
 #perform XOR transoformation to add a round key
 def addRoundKey(state, key):
-    for i in range(4):
-        for j in range(4):
+    for i in range(keySizeWords):
+        for j in range(keySizeWords):
             state[i][j] ^= key[i][j]
 
 #convert the input to a matrix - list of lists

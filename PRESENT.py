@@ -61,5 +61,5 @@ class Present:
             state = addRoundKey(state, self.round_keys[i])
             state = sBoxLayer(state)
             state = pLayer(state)
-        encrpyted = addRoundKey(state,self.round_keys[-1])
+        encrpyted = addRoundKey(state, self.round_keys[-1])
         return number2string(encrpyted)
